@@ -1,8 +1,12 @@
 package Class::Injection; ## Injects methods to other classes
 
 # use Data::Dumper;
+use 5.006; 
 use Class::Inspector;
 use strict;
+
+our $VERSION = '1.01';
+
 
 ## The Injection class is a elegant way to manipulate existing classes without editing them.
 ## It is done during runtime. It is a good way to write plugins without creating special plugins
@@ -666,40 +670,9 @@ technologies.
 
 =head1 REQUIRES
 
-L<Class::Injection> 
-
-L<Abstract> 
-
-L<Class::Injection> 
-
-L<Class::Injection> 
-
-L<Moose> for constructor only
-
-L<Class::Injection> 
-
-L<Class::Injection> 
-
-L<Class::Injection> 
-
-L<Class::Injection> 
-
-L<Bar::Over1> 
-
-L<Foo::Target> 
-
-L<Class::Injection> define the target
-
-L<Foo::Target> 
-
-L<Moose> creates an constructor
 
 L<Class::Inspector> 
 
-
-=head1 IMPLEMENTS
-
-L<Abstract> 
 
 
 =head1 METHODS
