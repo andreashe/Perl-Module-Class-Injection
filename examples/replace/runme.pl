@@ -1,14 +1,14 @@
 
 use lib '../../lib';
 
-use Target;
-use Over;
+use Local::Target;
+use Local::Over;
 
 
 Class::Injection::install();
 
 
-my $foo = Target->new();
+my $foo = Local::Target->new();
 
 
 $foo->test();

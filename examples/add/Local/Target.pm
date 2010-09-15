@@ -1,4 +1,4 @@
-package Target;
+package Local::Target;
 
 use Moose;
 

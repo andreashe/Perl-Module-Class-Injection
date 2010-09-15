@@ -1,11 +1,15 @@
 package Class::Injection; ## Injects methods to other classes
 
-# use Data::Dumper;
 use 5.006; 
 use Class::Inspector;
 use strict;
+use Data::Dumper;
 
-our $VERSION = '1.01';
+our $VERSION = '1.03';
+
+our $DEBUG;
+our $info_store={};
+our $break_flag;
 
 
 ## The Injection class is a elegant way to manipulate existing classes without editing them.
@@ -96,6 +100,7 @@ our $VERSION = '1.01';
 ## This example overwrites a class 'Target'. You can see the second value after the target class is the copymethod.
 ## Here it is 'add'. It is equivalent to 'append'.
 ##
+##
 ## PRIORITY
 ## ========
 ##
@@ -148,6 +153,10 @@ our $VERSION = '1.01';
 ## returntype - same as 'returns'.
 ##
 ## returnmethod - defines which method(s) return values are used. (see below)
+##
+## debug - enables the debug mode and prints some infos as well as the virtual commands. use 'true|yes|1' as value.
+##
+## replace - will cause the original method not to be used anymore, it will completely replaced by the injection methods. use 'true|yes|1' as value.
 ##
 ## 
 ## The returntype is currently set to 'array' for any type. What means it is not further implemented to returns something else.
@@ -271,7 +280,23 @@ our $VERSION = '1.01';
 ## 
 ##     my $foo = Abstract->new();
 ##
-
+##
+##
+## BREAK
+## =====
+##
+## If you want to break and makes the current method to the last one used, you can set a break flag by calling a static method:
+##
+##     sub test{
+##      my $this=shift;
+## 
+##      Class::Injection::break;
+## 
+##      return "this is plugin 1";
+##     }
+##
+## After this method, nur further method is called. Make sure you use the break on the very and of a method, because it could be that further, deeper methods you 
+## call, also are injected. That would cause a break for them.
 
 
 
@@ -293,6 +318,7 @@ sub import{
     my $returntype;
     my $returnmethod;
     my $replacetarget;
+    
 
     ## if the second value is a hashref, asign the elements
     if ( ref($secondvalue) ){
@@ -301,8 +327,9 @@ sub import{
       $priority   = $secondvalue->{'priority'};
       $returntype = $secondvalue->{'returns'} || $secondvalue->{'returntype'} || '';
       $returnmethod = $secondvalue->{'returnmethod'} || 'last';
+      $DEBUG = $DEBUG || $secondvalue->{'debug'} =~ m/^(true|yes|1)$/i ? 1 : 0;
 
-      $replacetarget = $secondvalue->{'replace'} =~ m/^(true|yes)$/i ? 1 : 0;
+      $replacetarget = $secondvalue->{'replace'} =~ m/^(true|yes|1)$/i ? 1 : 0;
 
     }else{ ## if the second value is NOT a ref, take copymethod and prio
       $copymethod = $secondvalue || 'replace';
@@ -367,7 +394,13 @@ sub import{
 sub install{
 
   my $col = $__PACKAGE__::collector;
-#    print Dumper($col);
+
+  if ($DEBUG){
+      print "collected methods:\n";
+      print Dumper($col);
+  }
+
+  
 
   my $sources_by_target={};
 
@@ -398,7 +431,7 @@ sub install{
     }
 
 
-#     print Dumper($sources_by_target);
+    
     
   
     
@@ -460,11 +493,17 @@ sub install{
 
 #         push @cmd, '*'.$target.'::_INJBAK_'.$method.'=\&'.$target.'::'.$method.';';
 
+
+        push @cmd, ' use feature "switch";';
+
         push @cmd, '*'.$target.'::'.$method.' = sub {';
 
         push @cmd, ' my @ret_org;';
         push @cmd, ' my @ret;';
         push @cmd, ' my @ret_refs;';
+        push @cmd, ' my @ret_tmp;';
+
+        push @cmd, 'given (1) {'; # break block
 
         
         if (!$replace_target->{$target}){ ## if no replace, reimplement original method
@@ -475,6 +514,7 @@ sub install{
 
             push @cmd_zer, ' push @ret_refs, \@ret_org;';
 
+            push @cmd_zer,'break if $Class::Injection::break_flag;';
 
         }
         
@@ -495,9 +535,10 @@ sub install{
             #my $copymethod = $col->{$source}->{'copymethod'};
 
             my $waitcmd;
-            $waitcmd .= ' my @ret_tmp = '.$source.'::'.$method.'(@_);'."\n";
+            $waitcmd .= ' @ret_tmp = '.$source.'::'.$method.'(@_);'."\n"; # method call
             $waitcmd .= ' push @ret, @ret_tmp;'."\n";
             $waitcmd .= ' push @ret_refs, \@ret_tmp;'."\n"; ## collecting references
+            $waitcmd .= ' break if $Class::Injection::break_flag;'."\n";
             
             ## depending on the priority place it before or after
             if ($priority < 0){
@@ -545,6 +586,9 @@ sub install{
 
         my $retv = $ret_sign.$ret_meth;
 
+        push @cmd, '}'; # break block
+        push @cmd,'$Class::Injection::break_flag = 0;'; ## reset the break flag
+
         if ($returnmethod eq 'collect'){
           push @cmd, ' return wantarray ? '.$retv.' : \\'.$retv.';'; ## assembles to a returnvalue
         } else {
@@ -562,7 +606,17 @@ sub install{
   
   
   my $cmd = join("\n",@cmd);
-#   print "\n\n\n".$cmd;
+
+
+  if ($DEBUG){
+    print "sources by target:\n";
+    print Dumper($sources_by_target);
+  }
+
+  ## save infos
+  $Class::Injection::info_store->{'sources_by_target'} = $sources_by_target;
+
+  print "\n\n\n".$cmd if $DEBUG;
   
   eval($cmd);
   if ($@){
@@ -574,12 +628,27 @@ sub install{
 
 
 
+## sets a flag to break after current method. No further methods used in the method stack.
+## You can use that in your new method like:
+##
+##  Class::Injection::break;
+##
+sub break {
+    $Class::Injection::break_flag = 1;
+}
+
+
+## returning infos about the installed methods as a hash.
+sub info {
+    return $Class::Injection::info_store;
+}
 
 
 
 
 
 1;
+
 
 
 #################### pod generated by Pod::Autopod - keep this line to make pod updates possible ####################
@@ -670,6 +739,7 @@ technologies.
 
 =head1 REQUIRES
 
+L<Data::Dumper> 
 
 L<Class::Inspector> 
 
@@ -677,9 +747,20 @@ L<Class::Inspector>
 
 =head1 METHODS
 
+=head2 break
+
+ Class::Injection::break();
+
+sets a flag to break after current method. No further methods used in the method stack.
+You can use that in your new method.
+
+ 
+
+
+
 =head2 import
 
- $this->import();
+ Class::Injection::import();
 
 The import function is called by Perl when the class is included by 'use'.
 It takes the parameters after the 'use Class::Injection' call.
@@ -687,17 +768,22 @@ This function stores your intention of injection in the static collector
 variable. Later you can call install() function to overwrite or append the methods.
 
 
+=head2 info
+
+ Class::Injection::info();
+
+returning infos about the installed methods as a hash.
+
+
 =head2 install
 
- $this->install();
+ Class::Injection::install();
 
 Installs the methods to existing classes. Do not try to call this method in a BEGIN block,
 the needed environment does not exist so far.
 
 
-=head2 test
 
- $this->test();
 
 
 =head1 RETURN TYPES
@@ -731,6 +817,10 @@ returntype - same as 'returns'.
 
 returnmethod - defines which method(s) return values are used. (see below)
 
+debug - enables the debug mode and prints some infos as well as the virtual commands. use 'true|yes|1' as value.
+
+replace - will cause the original method not to be used anymore, it will completely replaced by the injection methods. use 'true|yes|1' as value.
+
 
 The returntype is currently set to 'array' for any type. What means it is not further implemented to returns something else.
 I have to see if there changes are neccessary during praxis. So far it looks like a return of array is ok.
@@ -747,6 +837,23 @@ It gives you an scalar. But it depends on the used 'returnmethod' what exaclty y
 arrayref, with anything else it will be the first value, if in scalar context.
 
 
+
+
+=head1 BREAK
+
+
+If you want to break and makes the current method to the last one used, you can set a break flag by calling a static method:
+
+    sub test{
+     my $this=shift;
+
+     Class::Injection::break;
+
+     return "this is plugin 1";
+    }
+
+After this method, nur further method is called. Make sure you use the break on the very and of a method, because it could be that further, deeper methods you 
+call, also are injected. That would cause a break for them.
 
 
 =head1 RETURNMETHOD
@@ -883,6 +990,8 @@ The main script:
 
 
 
+
+
 =head1 ADD A METHOD
 
 
@@ -897,6 +1006,7 @@ execute the original method and the new method.
 
 This example overwrites a class 'Target'. You can see the second value after the target class is the copymethod.
 Here it is 'add'. It is equivalent to 'append'.
+
 
 
 

@@ -1,7 +1,7 @@
-package Over;
+package Local::Over;
 
 
-use Class::Injection qw/Target/;
+use Class::Injection qw/Local::Target add/;
 
 
 

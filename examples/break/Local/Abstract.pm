@@ -1,4 +1,4 @@
-package Abstract;
+package Local::Abstract;
 
 
 use Moose; ## for constructor only

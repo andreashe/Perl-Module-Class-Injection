@@ -32,3 +32,4 @@ my @res = $foo->test();
 
 print Dumper(@res);
 
+print Dumper(Class::Injection::info());
