@@ -831,17 +831,12 @@ variable. Later you can call install() function to overwrite or append the metho
 
 =head2 break
 
+Breakig in a method
+
  Class::Injection::break();
 
 sets a flag to break after current method. No further methods used in the method stack.
 You can use that in your new method.
-
-
-
-
-=head2 break
-
-Breakig in a method
 
 
 If you want to break and makes the current method to the last one used, you can set a break flag by calling a static method:
