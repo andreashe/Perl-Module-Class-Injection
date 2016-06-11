@@ -5,7 +5,7 @@ use Class::Inspector;
 use strict;
 use Data::Dumper;
 
-our $VERSION = '1.09';
+our $VERSION = '1.10';
 
 our $DEBUG;
 our $info_store={};
