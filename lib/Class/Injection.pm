@@ -580,7 +580,6 @@ In the calling Perl script to need to initialize that:
  my $foo = Foo::Target->new();
  
  $foo->test(); # Output is: 'this is the new method'
-
   
 The example above uses the default copymethod 'replace', which just replaces the methods.
 Class::Injection can do more complicated things, depending on your need you can stack methods
