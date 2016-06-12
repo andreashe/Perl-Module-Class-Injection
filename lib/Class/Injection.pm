@@ -345,7 +345,7 @@ sub install{
 
   print "\n\n\n".$cmd if $DEBUG;
   
-  eval($cmd);
+  eval($cmd); ## no critic
   if ($@){
     die __PACKAGE__." ERROR when injecting: ".$cmd.$@;
   }
